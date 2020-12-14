@@ -37,8 +37,8 @@ type exp =
 		| IsEmpty of exp
 		| IsIn of exp * exp
 		| IsSubset of exp * exp
-		| Getmin of exp * exp
-		| Getmax of exp * exp
+		| Getmin of exp 
+		| Getmax of exp 
   
     (*tipi esprimibili*)
 type evT = 
@@ -177,6 +177,16 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
                           SetVal(l) -> SetVal(delete toDel l)
                         | _-> failwith("Not a Set"))
 
+    | Getmin (s) -> match eval s r with
+                        SetVal(l) -> (findmin l)
+                      | _-> failwith("Not a Set")
+                                              
+      
+and findmin (l : evT list) : int = match l with
+                        | [] -> 0
+                        | [element] -> eval (toexp element) r 
+                        | element::tail -> min (eval (toexp element) r) (findmin tail)
+
 and delete (toDelete : exp)(l : evT list) : (evT list) = match l with 
                                                             [] -> []
                                                           | element::tail -> if toDelete =  (toexp element) then (delete toDelete tail) 
@@ -203,6 +213,9 @@ let s0 = eval set0 env0;;
 
 let set1 = Insert(Eint(3),set0);;
 let s1 = eval set1 env0;;
+
+let min = Getmin(set0);;
+let s2 = eval min env 0;;
 
 
 
