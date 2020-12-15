@@ -162,14 +162,13 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 
     | Insert (s, toAdd) -> (
                             match eval s r with
-                              SetVal(l) -> if (not(contains s l)) then SetVal((eval toAdd r)::l)
+                              SetVal(l) -> if ((contains  toAdd l) = Bool(false) ) then SetVal((eval toAdd r)::l)
                                                 else failwith("Already Existing")
                             | _-> failwith("Not a Set"))
 
     | IsIn (s, query) -> (
                           match eval s r with
-                            SetVal(l) -> if (not(contains s l)) then Bool(true)
-                                              else Bool(false)
+                            SetVal(l) -> (contains query l)
       | _-> failwith("Not a Set"))
     
     | Rm (s, toDel) -> (
@@ -177,23 +176,55 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
                           SetVal(l) -> SetVal(delete toDel l)
                         | _-> failwith("Not a Set"))
 
-    | Getmin (s) -> match eval s r with
-                        SetVal(l) -> (findmin l)
-                      | _-> failwith("Not a Set")
-                                              
-      
-and findmin (l : evT list) : int = match l with
-                        | [] -> 0
-                        | [element] -> eval (toexp element) r 
-                        | element::tail -> min (eval (toexp element) r) (findmin tail)
+  	| Getmin (s) -> (match eval s r with
+                        SetVal(l) -> findmin l
+											| _-> failwith("Not a Set"))
+											
+		| Getmax (s) ->( match eval s r with
+											SetVal(l) -> findmax l
+										| _-> failwith("Not a Set"))
+
+		| IsEmpty (s) -> (match eval s r with
+												SetVal(l) -> (match l with
+																			| [] -> Bool(true)
+																			| h::t -> Bool(false)
+																			|_ -> failwith("Not a valid Set"))
+
+												| _ -> failwith("Not a Set"))
+
+		| IsSubset (s1, s2) -> (match (eval s1 r, eval s2 r) with
+																(SetVal(l), SetVal(m)) -> Bool(sublist l m)
+															| _ -> failwith("Not a valid enty")
+															
+															)
+												
+
+
+and subaux (l : evT list)(m : evT list) : bool = match l, m with
+																								  [], _ -> true
+																								| _, [] -> false
+																								| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm
+and sublist (l : evT list)(m : evT list) : bool = match l, m with
+																									[], _ -> true
+																									| _, [] -> false
+																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m ||sublist l tlm													
+and findmin (l : evT list) : evT = match l with
+                        | [] -> Int(0)
+                        | [element] -> element
+												| element::tail -> let smallest = findmin tail in if element < smallest then element else smallest
+
+and findmax (l : evT list) : evT = match l with
+												| [] -> Int(0)
+												| [element] -> element
+												| element::tail -> let biggest = findmax tail in if element > biggest then element else biggest
 
 and delete (toDelete : exp)(l : evT list) : (evT list) = match l with 
                                                             [] -> []
                                                           | element::tail -> if toDelete =  (toexp element) then (delete toDelete tail) 
                                                                               else element::(delete toDelete tail)
-and contains (toSearch : exp)(l : evT list) : bool = match l with
-                                                    [] -> false
-                                                  | element::tail -> if toSearch = (toexp element) then true else contains toSearch tail;;
+and contains (toSearch : exp)(l : evT list) : evT = match l with
+                                                    [] -> Bool(false)
+                                                  | element::tail -> if toSearch = (toexp element) then Bool(true) else contains toSearch tail;;
 	
 
 
@@ -208,15 +239,32 @@ and contains (toSearch : exp)(l : evT list) : bool = match l with
 (* basico: no let *)
 let env0 = emptyenv Unbound;;
 
-let set0 = Set([Eint(1);Eint(2)]);;
+let set0 = Set([Eint(10);Eint(18);Eint(2)]);;
 let s0 = eval set0 env0;;
 
-let set1 = Insert(Eint(3),set0);;
+let set1 = Insert(set0, Eint(3));;
 let s1 = eval set1 env0;;
 
-let min = Getmin(set0);;
-let s2 = eval min env 0;;
+let set2 = IsIn(set0, Eint(1));;
+let s2 = eval set2 env0;;
 
+let min = Getmin(set0);;
+let s2 = eval min env0;;
+
+let max = Getmax(set0);;
+let s3 = eval max env0;;
+
+let set3 = Set([]);;
+let s3 = eval set1 env0;;
+
+let empty = IsEmpty(set1);;
+let s4 = eval empty env0;;
+
+let set4 = Insert(set3, Eint(18));;
+let s5 = eval set4 env0;;
+
+let sub = IsSubset(set4, set0);;
+let s6 = eval sub env0;;
 
 
 
