@@ -31,7 +31,8 @@ type exp =
 		| Map of exp * exp
 		
 		(*Valori set*)
-		| Singleton of exp list * ide
+		| Empty of ide
+		| Singleton of exp * ide
 		| Insert of exp * exp
 		| Rm of exp * exp
 		| IsEmpty of exp
@@ -50,7 +51,7 @@ type evT =
     | RecFunVal of ide * evFun
 
     (*Insieme*)
-    | SetVal of evT list * ide
+    | SetVal of (evT list) * ide
 and evFun = ide * exp * evT env;;
 
 
@@ -161,34 +162,40 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
                                       | element::tail -> (eval element r)::(evalset tail type_ r) in SetVal(evalset a type_ r, type_)
 
 *)
-		| Singleton(a, type_) -> if typecheck type_ a then SetVal([a], type_) else failwith("Wrong type")
+		| Empty(type_) ->( match type_ with
+											  "int" -> SetVal([], type_)
+											| "bool" -> SetVal([], type_)
+											| "string" -> SetVal([], type_)
+											| _ -> failwith("Not a valid type"))
+
+		| Singleton(a, type_) -> if typecheck type_ (eval a r) then SetVal((eval a r)::[], type_) else failwith("Wrong type")
 
     | Insert (s, toAdd) -> (
                             match eval s r with
-                              SetVal(l) -> if ((contains  toAdd l) = Bool(false) ) then SetVal((eval toAdd r)::l)
-                                                else failwith("Already Existing")
+                              SetVal(l, t) -> if (typecheck t (eval toAdd r)) then (if ((contains toAdd l) = Bool(false) ) then SetVal((eval toAdd r)::l, t)
+                                                else failwith("Already Existing")) else failwith ("Wrong type")
                             | _-> failwith("Not a Set"))
 
     | IsIn (s, query) -> (
                           match eval s r with
-                            SetVal(l) -> (contains query l)
+                            SetVal(l, t) -> if (typecheck t (eval query r)) then (contains query l) else failwith ("Wrong type")
       | _-> failwith("Not a Set"))
     
     | Rm (s, toDel) -> (
                         match eval s r with
-                          SetVal(l) -> SetVal(delete toDel l)
+                          SetVal(l, t) -> if (typecheck t (eval toDel r)) then SetVal(delete toDel l, t) else failwith ("Wrong type")
                         | _-> failwith("Not a Set"))
 
   	| Getmin (s) -> (match eval s r with
-                        SetVal(l) -> findmin l
+                        SetVal(l, t) -> findmin l
 											| _-> failwith("Not a Set"))
 											
 		| Getmax (s) ->( match eval s r with
-											SetVal(l) -> findmax l
+											SetVal(l, t) -> findmax l
 										| _-> failwith("Not a Set"))
 
 		| IsEmpty (s) -> (match eval s r with
-												SetVal(l) -> (match l with
+												SetVal(l, t) -> (match l with
 																			| [] -> Bool(true)
 																			| h::t -> Bool(false)
 																			|_ -> failwith("Not a valid Set"))
@@ -196,7 +203,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 												| _ -> failwith("Not a Set"))
 
 		| IsSubset (s1, s2) -> (match (eval s1 r, eval s2 r) with
-																(SetVal(l), SetVal(m)) -> Bool(sublist l m)
+																(SetVal(l, t1), SetVal(m, t2)) -> if (t1 = t2) then Bool(sublist l m) else failwith("Sets are not the same type")
 															| _ -> failwith("Not a valid enty")
 															
 															)
@@ -241,10 +248,10 @@ and contains (toSearch : exp)(l : evT list) : evT = match l with
 
 (* basico: no let *)
 let env0 = emptyenv Unbound;;
-
-let set0 = Singleton(Int(1), "int");;
-let s0 = eval set0 env0;;
 (*
+let set0 = Singleton(Eint(1), "int");;
+let s0 = eval set0 env0;;
+
 let set1 = Insert(set0, Eint(3));;
 let s1 = eval set1 env0;;
 
@@ -268,8 +275,8 @@ let s5 = eval set4 env0;;
 
 let sub = IsSubset(set4, set0);;
 let s6 = eval sub env0;;*)
-(*
-let set0 = Set([Estring("Corbezzoli");Estring("Hola");Estring("a")]);;
+
+let set0 = Singleton(Estring("Corbezzoli"), "string");;
 let s0 = eval set0 env0;;
 
 let set1 = Insert(set0, Eint(3));;
@@ -284,7 +291,7 @@ let s2 = eval min env0;;
 let max = Getmax(set0);;
 let s3 = eval max env0;;
 
-let set3 = Set([]);;
+let set3 = empty("int");;
 let s3 = eval set1 env0;;
 
 let empty = IsEmpty(set1);;
@@ -295,5 +302,5 @@ let s5 = eval set4 env0;;
 
 let sub = IsSubset(set4, set0);;
 let s6 = eval sub env0;;
-*)
+
 
