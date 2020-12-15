@@ -31,7 +31,7 @@ type exp =
 		| Map of exp * exp
 		
 		(*Valori set*)
-		| Set of exp list
+		| Singleton of exp list * ide
 		| Insert of exp * exp
 		| Rm of exp * exp
 		| IsEmpty of exp
@@ -50,7 +50,7 @@ type evT =
     | RecFunVal of ide * evFun
 
     (*Insieme*)
-    | SetVal of evT list
+    | SetVal of evT list * ide
 and evFun = ide * exp * evT env;;
 
 
@@ -156,9 +156,12 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
     (*=================== Estensione Interprete ====================*)
     (*=================== Ricorda il typecheck  ====================*)
     
-    | Set(a) -> let rec evalset l r = match l with
+    (*| Singleton(a, type_) -> let rec evalset l t r = match l with
                                         [] -> []
-                                      | element::tail -> (eval element r)::(evalset tail r) in SetVal(evalset a r)
+                                      | element::tail -> (eval element r)::(evalset tail type_ r) in SetVal(evalset a type_ r, type_)
+
+*)
+		| Singleton(a, type_) -> if typecheck type_ a then SetVal([a], type_) else failwith("Wrong type")
 
     | Insert (s, toAdd) -> (
                             match eval s r with
@@ -239,7 +242,34 @@ and contains (toSearch : exp)(l : evT list) : evT = match l with
 (* basico: no let *)
 let env0 = emptyenv Unbound;;
 
-let set0 = Set([Eint(10);Eint(18);Eint(2)]);;
+let set0 = Singleton(Int(1), "int");;
+let s0 = eval set0 env0;;
+(*
+let set1 = Insert(set0, Eint(3));;
+let s1 = eval set1 env0;;
+
+let set2 = IsIn(set0, Eint(1));;
+let s2 = eval set2 env0;;
+
+let min = Getmin(set0);;
+let s2 = eval min env0;;
+
+let max = Getmax(set0);;
+let s3 = eval max env0;;
+
+let set3 = Set([]);;
+let s3 = eval set1 env0;;
+
+let empty = IsEmpty(set1);;
+let s4 = eval empty env0;;
+
+let set4 = Insert(set3, Eint(18));;
+let s5 = eval set4 env0;;
+
+let sub = IsSubset(set4, set0);;
+let s6 = eval sub env0;;*)
+(*
+let set0 = Set([Estring("Corbezzoli");Estring("Hola");Estring("a")]);;
 let s0 = eval set0 env0;;
 
 let set1 = Insert(set0, Eint(3));;
@@ -265,6 +295,5 @@ let s5 = eval set4 env0;;
 
 let sub = IsSubset(set4, set0);;
 let s6 = eval sub env0;;
-
-
+*)
 
