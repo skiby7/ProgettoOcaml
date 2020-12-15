@@ -116,7 +116,8 @@ let toexp (a : evT) = match a with
     | Int(q) -> Eint(q)
     | Bool(q) -> Ebool(q)
     | String(q) -> Estring(q)
-    | _-> failwith("Convert error");;
+		| _-> failwith("Convert error");;
+		
 
 (*interprete*)
 let rec eval (e : exp) (r : evT env) : evT = match e with
@@ -207,17 +208,28 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 															| _ -> failwith("Not a valid enty")
 															
 															)
-												
+		| For_all(predicate, s) -> (match eval s r with
+																	  SetVal(l, t) -> forall l
+																	| _ -> failwith("Not a valid set")
+		) 
 
+
+and islowerthan (a : evT) : evT = if a < Int(10) then Bool(true) else Bool(false) 
+
+and forall (l : evT list) : evT = match l  with
+																											[] -> Bool(true)
+																										|	h::t -> if ( islowerthan h = Bool(true)) then (forall t) else Bool(false)
+																										| _-> failwith("Not a valid list")
 
 and subaux (l : evT list)(m : evT list) : bool = match l, m with
 																								  [], _ -> true
 																								| _, [] -> false
 																								| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm
+
 and sublist (l : evT list)(m : evT list) : bool = match l, m with
 																									[], _ -> true
 																									| _, [] -> false
-																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m ||sublist l tlm													
+																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m || sublist l tlm													
 and findmin (l : evT list) : evT = match l with
                         | [] -> Int(0)
                         | [element] -> element
@@ -248,12 +260,22 @@ and contains (toSearch : exp)(l : evT list) : evT = match l with
 
 (* basico: no let *)
 let env0 = emptyenv Unbound;;
-(*
+
 let set0 = Singleton(Eint(1), "int");;
 let s0 = eval set0 env0;;
 
 let set1 = Insert(set0, Eint(3));;
 let s1 = eval set1 env0;;
+
+let set10 = Insert(set0, Eint(20));;
+let s1 = eval set10 env0;;
+
+let all = For_all(islowerthanten, set1);;
+let s = eval all env0;;
+
+let all = For_all(islowerthanten, set10);;
+let s = eval all env0;;
+
 
 let set2 = IsIn(set0, Eint(1));;
 let s2 = eval set2 env0;;
@@ -263,7 +285,7 @@ let s2 = eval min env0;;
 
 let max = Getmax(set0);;
 let s3 = eval max env0;;
-
+(*
 let set3 = Set([]);;
 let s3 = eval set1 env0;;
 
@@ -275,7 +297,7 @@ let s5 = eval set4 env0;;
 
 let sub = IsSubset(set4, set0);;
 let s6 = eval sub env0;;*)
-
+(*
 let set0 = Singleton(Estring("Corbezzoli"), "string");;
 let s0 = eval set0 env0;;
 
@@ -302,5 +324,5 @@ let s5 = eval set4 env0;;
 
 let sub = IsSubset(set4, set0);;
 let s6 = eval sub env0;;
-
+*)
 
