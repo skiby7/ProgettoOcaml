@@ -116,8 +116,8 @@ let toexp (a : evT) = match a with
     | Int(q) -> Eint(q)
     | Bool(q) -> Ebool(q)
     | String(q) -> Estring(q)
-		| _-> failwith("Convert error");;
-		
+		| _-> failwith("Convert error");;		
+
 
 (*interprete*)
 let rec eval (e : exp) (r : evT env) : evT = match e with
@@ -158,11 +158,6 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
     (*=================== Estensione Interprete ====================*)
     (*=================== Ricorda il typecheck  ====================*)
     
-    (*| Singleton(a, type_) -> let rec evalset l t r = match l with
-                                        [] -> []
-                                      | element::tail -> (eval element r)::(evalset tail type_ r) in SetVal(evalset a type_ r, type_)
-
-*)
 		| Empty(type_) ->( match type_ with
 											  "int" -> SetVal([], type_)
 											| "bool" -> SetVal([], type_)
@@ -208,18 +203,25 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 															| _ -> failwith("Not a valid enty")
 															
 															)
-		| For_all(predicate, s) -> (match eval s r with
-																	  SetVal(l, t) -> forall l
+		| For_all(f, s) -> (match eval s r with
+																		SetVal([], t) -> Bool(true)
+																	| SetVal(l, t) -> ( let f1 = (eval f r)
+																in let applyfun (f : evT) (v : evT) : (evT) = (match f with
+																												FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v)
+																											| RecFunVal(g, (arg, fBody, fDecEnv)) ->(
+																																					let rEnv = (bind fDecEnv g f)
+																																						in let aEnv = (bind rEnv arg v) 
+																																							in eval fBody aEnv)
+																											|_ -> failwith("Non functional value"))
+																													in let rec apply (l : evT list) (f : evT) : evT = match l with 
+																														[] -> Bool(true)
+																													| hd::tl -> if (applyfun f hd) = Bool(true) then (apply tl f) else Bool(false)
+																												in SetVal(l, t))
 																	| _ -> failwith("Not a valid set")
-		) 
+		)  
 
+and trypredicate (x : evT) : exp = if x < Int(10) then Ebool(true) else Ebool(false)
 
-and islowerthan (a : evT) : evT = if a < Int(10) then Bool(true) else Bool(false) 
-
-and forall (l : evT list) : evT = match l  with
-																											[] -> Bool(true)
-																										|	h::t -> if ( islowerthan h = Bool(true)) then (forall t) else Bool(false)
-																										| _-> failwith("Not a valid list")
 
 and subaux (l : evT list)(m : evT list) : bool = match l, m with
 																								  [], _ -> true
@@ -270,11 +272,10 @@ let s1 = eval set1 env0;;
 let set10 = Insert(set0, Eint(20));;
 let s1 = eval set10 env0;;
 
-let all = For_all(islowerthanten, set1);;
-let s = eval all env0;;
+let funo = Fun("x", IsZero(Den "x"));;
+let response = For_all(funo, set10);;
+let s15 = eval response env0;;
 
-let all = For_all(islowerthanten, set10);;
-let s = eval all env0;;
 
 
 let set2 = IsIn(set0, Eint(1));;
