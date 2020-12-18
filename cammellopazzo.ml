@@ -130,28 +130,28 @@ let toexp (a : evT) = match a with
 (*Alcune funzioni base *)
 
 let rec subaux (l : 'a list)(m : 'a list) : bool = match l, m with
-																								  [], _ -> true
-																								| _, [] -> false
-																								| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm;;
+							  [], _ -> true
+							| _, [] -> false
+							| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm;;
 
 let rec sublist (l : 'a list)(m : 'a list) : bool = match l, m with
-																									[], _ -> true
-																									| _, [] -> false
-																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m || sublist l tlm;;											
+							  [], _ -> true
+							| _, [] -> false
+							| hdl::_, hdm::tlm -> hdl = hdm && subaux l m || sublist l tlm;;											
 
 let rec contains (toSearch : 'a)(l : 'a list) : bool = match l with
-                                                    [] -> false
-																									| element::tail -> element = toSearch || contains toSearch tail;;
+                                                    	  [] -> false
+							| element::tail -> element = toSearch || contains toSearch tail;;
 
 let rec remove_from_list (element : 'a)(l : 'a list) : 'a list = match l with
-																										[] -> []
-																									|	head::tail -> if head = element then remove_from_list element tail 
-																																		else head::(remove_from_list element tail);;
+							  [] -> []
+							| head::tail -> if head = element then remove_from_list element tail 
+									else head::(remove_from_list element tail);;
 
 let rec list_as_set (l : 'a list) : 'a list = match l with
-																										[] -> []
-																									|	head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) 
-																																		else head::(list_as_set tail);;
+							  [] -> []
+							| head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) 
+															else head::(list_as_set tail);;
 (*
 let rec forall (f : exp) (l : evT list) : evT = match l with
 																						[] -> Bool(true)
@@ -165,7 +165,7 @@ let rec forall (f : exp) (l : evT list) : evT = match l with
 (*interprete*)
 let rec eval (e : exp) (r : evT env) : evT = match e with
 (*Operazioni incluse nell'interprete*)
-			Eint n -> Int n 
+		  Eint n -> Int n 
 		| Ebool b -> Bool b 
 		| Estring a -> String a
 		| IsZero a -> iszero (eval a r) 
@@ -186,17 +186,17 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		| Fun(i, a) -> FunVal(i, a, r) 
 		| FunCall(f, eArg) -> let fClosure = (eval f r) in
 				(match fClosure with
-							FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg (eval eArg r)) 
+						  FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg (eval eArg r)) 
 						| RecFunVal(g, (arg, fBody, fDecEnv)) -> let aVal = (eval eArg r) in
-																											let rEnv = (bind fDecEnv g fClosure) in
-																												let aEnv = (bind rEnv arg aVal) in
-																																		eval fBody aEnv 
+																	let rEnv = (bind fDecEnv g fClosure) in
+																		let aEnv = (bind rEnv arg aVal) in
+																				eval fBody aEnv 
 						|	_ -> failwith("non functional value")) 
 						
 		| Letrec(f, funDef, letBody) ->(match funDef with
-																			Fun(i, fBody) -> let r1 = (bind r f (RecFunVal(f, (i, fBody, r)))) in
-																								eval letBody r1 
-																		| _ -> failwith("non functional def"))
+										Fun(i, fBody) -> let r1 = (bind r f (RecFunVal(f, (i, fBody, r)))) in
+															eval letBody r1 
+									  | _ -> failwith("non functional def"))
 	
 		(*=================== operazioni di base ====================*)
 					(*Creazione insiemi*)
