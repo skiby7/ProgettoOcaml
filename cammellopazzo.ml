@@ -7,9 +7,11 @@ let applyenv (r : 't env) (i : ide) = r i;;
 let bind (r : 't env) (i : ide) (v : 't) = function x -> if x = i then v else applyenv r x;;
 
 type exp = 
+		(*Valori primitivi*)
 			Eint of int 
 		| Ebool of bool 
 		| Estring of string
+		(*Operatori già inclusi nel linguaggio*)
 		| Den of ide 
 		| Prod of exp * exp 
 		| Sum of exp * exp 
@@ -25,14 +27,18 @@ type exp =
 		| Fun of ide * exp 
 		| FunCall of exp * exp 
 		| Letrec of ide * exp * exp
+		(*Operazioni funzionali*)
 		| For_all of exp * exp
 		| Exist of exp * exp
 		| Filter of exp * exp
 		| Map of exp * exp
 		
-		(*Valori set*)
+		(*Operatori di base sugli insiemi*)
 		| Empty of ide
 		| Singleton of exp * ide
+		| Union of exp * exp
+		| Intersection of exp * exp
+		| Difference of exp * exp
 		| Insert of exp * exp
 		| Rm of exp * exp
 		| IsEmpty of exp
@@ -112,6 +118,30 @@ let non x = if (typecheck "bool" x)
 					| Bool(false) -> Bool(true))
   else failwith("Type error");;
 
+(*Alcune funzioni base *)
+
+let rec subaux (l : 'a list)(m : 'a list) : bool = match l, m with
+																								  [], _ -> true
+																								| _, [] -> false
+																								| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm;;
+
+let rec sublist (l : 'a list)(m : 'a list) : bool = match l, m with
+																									[], _ -> true
+																									| _, [] -> false
+																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m || sublist l tlm;;											
+
+let rec contains (toSearch : 'a)(l : 'a list) : bool = match l with
+                                                    [] -> false
+																									| element::tail -> element = toSearch || contains toSearch tail;;
+
+let rec remove_from_list (element : 'a)(l : 'a list) : 'a list = match l with
+																																		[] -> []
+																																	|	head::tail -> if head = element then remove_from_list element tail else head::(remove_from_list element tail);;
+
+let rec list_as_set (l : 'a list) : 'a list = match l with
+																																	[] -> []
+																																|	head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) else head::(list_as_set tail);;
+									(*Funzione di supporto per la conversione di tipo*)
 let toexp (a : evT) = match a with
     | Int(q) -> Eint(q)
     | Bool(q) -> Ebool(q)
@@ -121,6 +151,7 @@ let toexp (a : evT) = match a with
 
 (*interprete*)
 let rec eval (e : exp) (r : evT env) : evT = match e with
+(*Operazioni incluse nell'interprete*)
 			Eint n -> Int n 
 		| Ebool b -> Bool b 
 		| Estring(a) -> String(a)
@@ -154,6 +185,35 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																								eval letBody r1 
 																		| _ -> failwith("non functional def"))
 	
+		(*Operazioni di base sugli insiemi*)
+		| Union(s1, s2) -> (match (eval s1 r), (eval s2 r) with
+													SetVal(l1, t1), SetVal(l2, t2) -> if t1 <> t2 then failwith("Sets are not the same type") 
+																															else let final_list = l1@l2 in SetVal(list_as_set final_list, t1)
+												| _,SetVal(_,_) -> failwith("s1 is not a Set")
+												| SetVal(_,_),_ -> failwith("s2 is not a Set")
+												| _,_ -> failwith("Not a valid pair of Sets"))
+		| Intersection(s1, s2) -> (match (eval s1 r), (eval s2 r) with
+													SetVal(l1, t1), SetVal(l2, t2) ->( if t1 <> t2 then failwith("Sets are not the same type") 
+																															else let rec intersect l1 l2 = match l1, l2 with
+																																					head::tail, lista -> if (contains head lista) then head::(intersect tail lista) else (intersect tail lista)
+																																				| [], lista -> []
+																																				| lista, [] -> []	
+																																				in SetVal(intersect l1 l2, t1))
+												| _,SetVal(_,_) -> failwith("s1 is not a Set")
+												| SetVal(_,_),_ -> failwith("s2 is not a Set")
+												| _,_ -> failwith("Not a valid pair of Sets"))
+		| Difference(s1, s2) ->( match (eval s1 r), (eval s2 r) with
+											SetVal(l1, t1), SetVal(l2, t2) ->( if t1 <> t2 then failwith("Sets are not the same type") 
+																													else let rec difference l1 l2 = match l1, l2 with
+																													lista, head::tail -> difference (remove_from_list head lista) tail
+																												| [], lista -> []
+																												| lista, [] -> lista
+																												in SetVal(difference l1 l2, t1))
+																												
+																												
+											| _,SetVal(_,_) -> failwith("s1 is not a Set")
+											| SetVal(_,_),_ -> failwith("s2 is not a Set")
+											| _,_ -> failwith("Not a valid pair of Sets"))
 
     (*=================== Estensione Interprete ====================*)
     (*=================== Ricorda il typecheck  ====================*)
@@ -168,13 +228,13 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 
     | Insert (s, toAdd) -> (
                             match eval s r with
-                              SetVal(l, t) -> if (typecheck t (eval toAdd r)) then (if ((contains toAdd l) = Bool(false) ) then SetVal((eval toAdd r)::l, t)
+                              SetVal(l, t) -> if (typecheck t (eval toAdd r)) then (if not(contains (eval toAdd r) l) then SetVal((eval toAdd r)::l, t)
                                                 else failwith("Already Existing")) else failwith ("Wrong type")
                             | _-> failwith("Not a Set"))
 
     | IsIn (s, query) -> (
                           match eval s r with
-                            SetVal(l, t) -> if (typecheck t (eval query r)) then (contains query l) else failwith ("Wrong type")
+                            SetVal(l, t) -> if (typecheck t (eval query r)) then Bool(contains (eval query r) l) else failwith ("Wrong type")
       | _-> failwith("Not a Set"))
     
     | Rm (s, toDel) -> (
@@ -203,7 +263,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 															| _ -> failwith("Not a valid enty")
 															
 															)
-		| For_all(f, s) -> (match eval s r with
+		(*| For_all(f, s) -> (match eval s r with
 																		SetVal([], t) -> Bool(true)
 																	| SetVal(l, t) -> ( let f1 = (eval f r)
 																in let applyfun (f : evT) (v : evT) : (evT) = (match f with
@@ -218,37 +278,24 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																													| hd::tl -> if (applyfun f hd) = Bool(true) then (apply tl f) else Bool(false)
 																												in SetVal(l, t))
 																	| _ -> failwith("Not a valid set")
-		)  
-
-and trypredicate (x : evT) : exp = if x < Int(10) then Ebool(true) else Ebool(false)
+		)  *)
 
 
-and subaux (l : evT list)(m : evT list) : bool = match l, m with
-																								  [], _ -> true
-																								| _, [] -> false
-																								| hdl::tll, hdm::tlm -> hdl = hdm && subaux tll tlm
-
-and sublist (l : evT list)(m : evT list) : bool = match l, m with
-																									[], _ -> true
-																									| _, [] -> false
-																									| hdl::_, hdm::tlm -> hdl = hdm && subaux l m || sublist l tlm													
 and findmin (l : evT list) : evT = match l with
-                        | [] -> Int(0)
-                        | [element] -> element
-												| element::tail -> let smallest = findmin tail in if element < smallest then element else smallest
+		| [] -> Int(0)
+		| [element] -> element
+		| element::tail -> let smallest = findmin tail in if element < smallest then element else smallest
 
 and findmax (l : evT list) : evT = match l with
-												| [] -> Int(0)
-												| [element] -> element
-												| element::tail -> let biggest = findmax tail in if element > biggest then element else biggest
+		| [] -> Int(0)
+		| [element] -> element
+		| element::tail -> let biggest = findmax tail in if element > biggest then element else biggest
 
 and delete (toDelete : exp)(l : evT list) : (evT list) = match l with 
-                                                            [] -> []
-                                                          | element::tail -> if toDelete =  (toexp element) then (delete toDelete tail) 
-                                                                              else element::(delete toDelete tail)
-and contains (toSearch : exp)(l : evT list) : evT = match l with
-                                                    [] -> Bool(false)
-                                                  | element::tail -> if toSearch = (toexp element) then Bool(true) else contains toSearch tail;;
+																				[] -> []
+																			| element::tail -> if toDelete =  (toexp element) then (delete toDelete tail) 
+																													else element::(delete toDelete tail)													
+;; 
 	
 
 
@@ -266,17 +313,29 @@ let env0 = emptyenv Unbound;;
 let set0 = Singleton(Eint(1), "int");;
 let s0 = eval set0 env0;;
 
+let set01 = Singleton(Eint(75), "int");;
+let s01 = eval set01 env0;;
+
 let set1 = Insert(set0, Eint(3));;
 let s1 = eval set1 env0;;
 
 let set10 = Insert(set0, Eint(20));;
 let s1 = eval set10 env0;;
 
-let funo = Fun("x", IsZero(Den "x"));;
+(*let funo = Fun("x", IsZero(Den "x"));;
 let response = For_all(funo, set10);;
-let s15 = eval response env0;;
+let s15 = eval response env0;;*)
 
+let nonso = Singleton(Eint(23423), "int");;
+let inter = Intersection(nonso, set10);;
+eval inter env0;;
 
+let sub = Difference(set10, nonso);;
+eval sub env0;;
+
+let subo = Singleton(Eint(20), "int");;
+let sub = Difference(set10, subo);;
+eval sub env0;;
 
 let set2 = IsIn(set0, Eint(1));;
 let s2 = eval set2 env0;;
@@ -286,6 +345,9 @@ let s2 = eval min env0;;
 
 let max = Getmax(set0);;
 let s3 = eval max env0;;
+
+let un = Union(set10, set01);;
+let s010 = eval un env0;;
 (*
 let set3 = Set([]);;
 let s3 = eval set1 env0;;
