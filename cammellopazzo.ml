@@ -67,7 +67,7 @@ and evFun = ide * exp * evT env;;
 (*rts*)
 (*type checking*)
 let typecheck (s : string) (v : evT) : bool = match s with
-		"int" -> (match v with
+	  "int" -> (match v with
 			  Int(_) -> true 
 			| _ -> false) 
 	| "bool" -> (match v with
@@ -114,7 +114,7 @@ let et x y = if (typecheck "bool" x) && (typecheck "bool" y)
 
 let non x = if (typecheck "bool" x)
 	then (match x with
-	   	  Bool(true) -> Bool(false) 
+	   	Bool(true) -> Bool(false) 
 		| Bool(false) -> Bool(true))
 	else failwith("Type error");;
 	
@@ -152,15 +152,6 @@ let rec list_as_set (l : 'a list) : 'a list = match l with
 			  [] -> []
 			| head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) 
 					 else head::(list_as_set tail);;
-(*
-let rec forall (f : exp) (l : evT list) : evT = match l with
-																						[] -> Bool(true)
-																					| head::tail -> if (FunCall(f, toexp head) = Ebool(true)) then forall f tail 
-																														else Bool(false);;
-*)
-
-									
-
 
 (*interprete*)
 let rec eval (e : exp) (r : evT env) : evT = match e with
@@ -351,9 +342,9 @@ and findmax (l : evT list) : evT = match l with
 and delete (toDelete : exp)(l : evT list) : (evT list) = match l with 
 		  [] -> []
 		| element::tail -> if toDelete =  (toexp element) then (delete toDelete tail) 
-																													else element::(delete toDelete tail)													
+							else element::(delete toDelete tail)													
 ;; 
-	
+	(*===================== Fine Interprete =====================*)
 
 
 
@@ -362,108 +353,104 @@ and delete (toDelete : exp)(l : evT list) : (evT list) = match l with
 
 		
 		
-(* =============================  TESTS  ================= *)
+(* =====================  TESTS  ===================== *)
 
 (* basico: no let *)
+
+
+
+
+let rec convertListInt (l : evT list) : 'a list = match l with
+	[] -> []
+| hd::tl -> match hd with Int(s) -> s::(convertListInt tl);;
+
+let rec convertListString (l : evT list) : 'a list = match l with
+	[] -> []
+| hd::tl -> match hd with String(s) -> s::(convertListString tl);;
+
+let rec convertListBool (l : evT list) : 'a list = match l with
+	[] -> []
+| hd::tl -> match hd with Bool(true) -> "true"::(convertListBool tl) | Bool(false) -> "false"::(convertListBool tl);;
+
+let print_set_int set env = match eval set env with
+						  SetVal(l, t) -> let list = convertListInt l in List.iter (Printf.printf "%d ") list
+						| _ -> failwith("Not a valid Set");;
+
+let print_set_other set env = match eval set env with
+						  SetVal(l, t) -> match t with 
+						| "string" -> let list = convertListString l in List.iter (Printf.printf "%s ") list
+						| "bool" -> let list = convertListBool l in List.iter (Printf.printf "%s ") list
+						| _ -> failwith("Not a valid Set");;
 let env0 = emptyenv Unbound;;
 
 let set0 = Singleton(Eint(1), "int");;
 let s0 = eval set0 env0;;
 
-let set01 = Singleton(Eint(75), "int");;
-let s01 = eval set01 env0;;
-
-let set1 = Insert(set0, Eint(3));;
-let s1 = eval set1 env0;;
-
-let set10 = Insert(set0, Eint(20));;
-let s1 = eval set10 env0;;
-
-(*let funo = Fun("x", IsZero(Den "x"));;
-let response = For_all(funo, set10);;
-let s15 = eval response env0;;*)
-
-let nonso = Singleton(Eint(23423), "int");;
-let inter = Intersection(nonso, set10);;
-eval inter env0;;
-
-let sub = Difference(set10, nonso);;
-eval sub env0;;
-
-let subo = Singleton(Eint(20), "int");;
-let sub = Difference(set10, subo);;
-eval sub env0;;
-
-let set2 = IsIn(set0, Eint(1));;
-let s2 = eval set2 env0;;
-
-let min = Getmin(set0);;
-let s2 = eval min env0;;
-
-let max = Getmax(set0);;
-let s3 = eval max env0;;
-
-let un = Union(set10, set01);;
-let s010 = eval un env0;;
-
-let pred = Fun ("y",  Eq (Den "y", Eint(72)));;
-let predicate = Fun ("y", Or (Eq (Den "y", Eint 43), IsZero (Den "y")));;
-let test = Singleton(Eint(0), "int");;
-
-let testset = Insert(test, Eint(43));;
-let result = For_all(predicate, testset);;
-eval result env0;;
-
-let result = Exists(pred, testset);;
-eval result env0;;
-let testset1 = Insert(testset, Eint(3455));;
-
-let result = Filter(predicate, testset1);;
-eval result env0;;
-
-let maptest = Fun("y", Prod(Den "y", Eint 2));;
-let result = Map(maptest, Union(set10, testset));;
-eval result env0;;
 
 
-(*
-let set3 = Set([]);;
-let s3 = eval set1 env0;;
 
-let empty = IsEmpty(set1);;
-let s4 = eval empty env0;;
+Printf.printf "Creazione ambiente env0\n";;
 
-let set4 = Insert(set3, Eint(18));;
-let s5 = eval set4 env0;;
+Printf.printf "Creazione set di interi -> intset: ";;
 
-let sub = IsSubset(set4, set0);;
-let s6 = eval sub env0;;*)
-(*
-let set0 = Singleton(Estring("Corbezzoli"), "string");;
-let s0 = eval set0 env0;;
+let intset = Singleton(Eint(75), "int");;
 
-let set1 = Insert(set0, Eint(3));;
-let s1 = eval set1 env0;;
+let intset = Insert(intset, Eint(3));;
 
-let set2 = IsIn(set0, Eint(1));;
-let s2 = eval set2 env0;;
+let intset = Insert(intset, Eint(20));;
 
-let min = Getmin(set0);;
-let s2 = eval min env0;;
+print_set_int intset env0;;
 
-let max = Getmax(set0);;
-let s3 = eval max env0;;
+Printf.printf "\n";;
 
-let set3 = empty("int");;
-let s3 = eval set1 env0;;
+let intset1 = Singleton(Eint(82), "int");;
 
-let empty = IsEmpty(set1);;
-let s4 = eval empty env0;;
+let intset1 = Insert(intset1, Eint(34));;
 
-let set4 = Insert(set3, Eint(18));;
-let s5 = eval set4 env0;;
+let intset1 = Insert(intset1, Eint(20));;
 
-let sub = IsSubset(set4, set0);;
-let s6 = eval sub env0;;
-*)
+Printf.printf "Creazione secondo set di interi -> intset1: ";;
 
+print_set_int intset1 env0;;
+
+Printf.printf "\n";;
+
+Printf.printf "Proviamo le operazioni di base:\n";;
+
+Printf.printf " - Unione (intset, intset1) -> ";;
+let unione = Union(intset, intset1);;
+print_set_int unione env0;;
+Printf.printf "\n";;
+
+Printf.printf " - Intersezione (intset, intset1) -> ";;
+let intersezione = Intersection(intset, intset1);;
+print_set_int intersezione env0;;
+Printf.printf "\n";;
+
+Printf.printf " - Differenza (intset, intset1) -> {intset \\ intset1} = ";;
+let differenza = Difference(intset, intset1);;
+print_set_int differenza env0;;
+Printf.printf "\n";;
+Printf.printf "Proviamo le altre operazioni: ";;
+Printf.printf "Creo un insieme vuoto (Empty(\"string\")) e controllo se è vuoto -> ";;
+let stringset = Empty("string");;
+let isemp = IsEmpty(stringset);;
+let printtest x = if eval x env0 = Bool(true) then Printf.printf "True\n" else Printf.printf "False\n";;
+printtest isemp;;
+Printf.printf "Inserisco \"OCaml\"\nstringset -> ";;
+let stringset = Insert(stringset, Estring("OCaml"));;
+Printf.printf "Inserisco \"Interprete\"\nstringset -> ";;
+let stringset = Insert(stringset, Estring("Interprete"));;
+print_set_other stringset env0;;
+Printf.printf "\n";;
+Printf.printf "Controlliamo se \"OCaml\" e \"Delfino\" sono nel Set";;
+
+Printf.printf "\n";;
+let istrue = let stringa = Estring("OCaml") in IsIn(stringset, stringa);;
+printtest istrue;;
+
+let istrue = let stringa = Estring("Delfino") in IsIn(stringset, stringa);;
+
+printtest istrue;;
+
+Printf.printf "\n";;
