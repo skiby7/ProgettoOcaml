@@ -286,10 +286,10 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																																					let aEnv = (bind rEnv arg v) in
 																																											eval fBody aEnv 
 															|	_ -> failwith("non functional value"))
-																								in let rec forall (lista : evT list) (f : evT) : evT = match lista with
+																								in let rec forall  (f : evT) (lista : evT list) : evT = match lista with
 																																[] -> Bool(true)
-																															|	hd::tl -> if ((apply f hd) = Bool(true)) then forall tl f else Bool(false)
-																							in forall l fClosure
+																															|	hd::tl -> if ((apply f hd) = Bool(true)) then forall f tl else Bool(false)
+																							in forall fClosure l
 													| f, _ -> failwith("Not a valid set")
 		)
 		| Exists(f, s) -> ( match f, eval s r with
@@ -301,10 +301,10 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																																													let aEnv = (bind rEnv arg v) in
 																																															eval fBody aEnv 
 																								|	_ -> failwith("non functional value"))
-																		in let rec exists (lista : evT list) (f : evT) : evT = match lista with
+																		in let rec exists  (f : evT) (lista : evT list) : evT = match lista with
 																				[] -> Bool(false)
-																			|	hd::tl -> if ((apply f hd) = Bool(true)) then Bool(true) else exists tl f
-											in exists l fClosure
+																			|	hd::tl -> if ((apply f hd) = Bool(true)) then Bool(true) else exists f tl
+											in exists fClosure l
 	| f, _ -> failwith("Not a valid set")
 )
 
@@ -317,10 +317,10 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																																													let aEnv = (bind rEnv arg v) in
 																																															eval fBody aEnv 
 																								|	_ -> failwith("non functional value"))
-																		in let rec filter (lista : evT list) (f : evT) : (evT list) = match lista with
+																		in let rec filter  (f : evT) (lista : evT list) : (evT list) = match lista with
 																				[] -> []
-																			|	hd::tl -> if ((apply f hd) = Bool(true)) then hd::(filter tl f) else filter tl f
-											in SetVal(filter l fClosure, t)
+																			|	hd::tl -> if ((apply f hd) = Bool(true)) then hd::(filter f tl) else filter f tl
+											in SetVal(filter fClosure l, t)
 	| f, _ -> failwith("Not a valid set")
 )
 
@@ -333,10 +333,10 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																																													let aEnv = (bind rEnv arg v) in
 																																															eval fBody aEnv 
 																								|	_ -> failwith("non functional value"))
-																		in let rec map (lista : evT list) (f : evT) : (evT list) = match lista with
+																		in let rec map (f : evT) (lista : evT list) : (evT list) = match lista with
 																				[] -> []
-																			|	hd::tl -> (apply f hd)::(map tl f)
-											in SetVal(list_as_set(map l fClosure), t)
+																			|	hd::tl -> (apply f hd)::(map f tl)
+											in SetVal(list_as_set(map fClosure l), t)
 	| f, _ -> failwith("Not a valid set")
 )
 		(*Funzioni di appoggio per le operazioni base*)
