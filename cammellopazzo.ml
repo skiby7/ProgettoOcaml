@@ -29,7 +29,7 @@ type exp =
 		| Letrec of ide * exp * exp
 		(*Operazioni funzionali*)
 		| For_all of exp * exp
-		| Exist of exp * exp
+		| Exists of exp * exp
 		| Filter of exp * exp
 		| Map of exp * exp
 		
@@ -116,7 +116,16 @@ let non x = if (typecheck "bool" x)
 	then (match x with
 						Bool(true) -> Bool(false) 
 					| Bool(false) -> Bool(true))
-  else failwith("Type error");;
+	else failwith("Type error");;
+	
+			(*Funzione di supporto per la conversione di tipo*)
+
+let toexp (a : evT) = match a with
+| Int(q) -> Eint(q)
+| Bool(q) -> Ebool(q)
+| String(q) -> Estring(q)
+| _-> failwith("Convert error");;		
+
 
 (*Alcune funzioni base *)
 
@@ -135,18 +144,22 @@ let rec contains (toSearch : 'a)(l : 'a list) : bool = match l with
 																									| element::tail -> element = toSearch || contains toSearch tail;;
 
 let rec remove_from_list (element : 'a)(l : 'a list) : 'a list = match l with
-																																		[] -> []
-																																	|	head::tail -> if head = element then remove_from_list element tail else head::(remove_from_list element tail);;
+																										[] -> []
+																									|	head::tail -> if head = element then remove_from_list element tail 
+																																		else head::(remove_from_list element tail);;
 
 let rec list_as_set (l : 'a list) : 'a list = match l with
-																																	[] -> []
-																																|	head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) else head::(list_as_set tail);;
-									(*Funzione di supporto per la conversione di tipo*)
-let toexp (a : evT) = match a with
-    | Int(q) -> Eint(q)
-    | Bool(q) -> Ebool(q)
-    | String(q) -> Estring(q)
-		| _-> failwith("Convert error");;		
+																										[] -> []
+																									|	head::tail -> if (contains head tail) then head::list_as_set((remove_from_list head tail)) 
+																																		else head::(list_as_set tail);;
+(*
+let rec forall (f : exp) (l : evT list) : evT = match l with
+																						[] -> Bool(true)
+																					| head::tail -> if (FunCall(f, toexp head) = Ebool(true)) then forall f tail 
+																														else Bool(false);;
+*)
+
+									
 
 
 (*interprete*)
@@ -154,7 +167,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 (*Operazioni incluse nell'interprete*)
 			Eint n -> Int n 
 		| Ebool b -> Bool b 
-		| Estring(a) -> String(a)
+		| Estring a -> String a
 		| IsZero a -> iszero (eval a r) 
 		| Den i -> applyenv r i 
 		| Eq(a, b) -> eq (eval a r) (eval b r) 
@@ -185,7 +198,16 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 																								eval letBody r1 
 																		| _ -> failwith("non functional def"))
 	
-		(*Operazioni di base sugli insiemi*)
+		(*=================== operazioni di base ====================*)
+					(*Creazione insiemi*)
+		| Empty(type_) ->( match type_ with
+													"int" -> SetVal([], type_)
+												| "bool" -> SetVal([], type_)
+												| "string" -> SetVal([], type_)
+												| _ -> failwith("Not a valid type"))
+
+		| Singleton(a, type_) -> if typecheck type_ (eval a r) then SetVal((eval a r)::[], type_) else failwith("Wrong type")
+					(*Operazioni elementari*)
 		| Union(s1, s2) -> (match (eval s1 r), (eval s2 r) with
 													SetVal(l1, t1), SetVal(l2, t2) -> if t1 <> t2 then failwith("Sets are not the same type") 
 																															else let final_list = l1@l2 in SetVal(list_as_set final_list, t1)
@@ -215,18 +237,8 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 											| SetVal(_,_),_ -> failwith("s2 is not a Set")
 											| _,_ -> failwith("Not a valid pair of Sets"))
 
-    (*=================== Estensione Interprete ====================*)
-    (*=================== Ricorda il typecheck  ====================*)
-    
-		| Empty(type_) ->( match type_ with
-											  "int" -> SetVal([], type_)
-											| "bool" -> SetVal([], type_)
-											| "string" -> SetVal([], type_)
-											| _ -> failwith("Not a valid type"))
-
-		| Singleton(a, type_) -> if typecheck type_ (eval a r) then SetVal((eval a r)::[], type_) else failwith("Wrong type")
-
-    | Insert (s, toAdd) -> (
+  				(*Operazioni base di cui è richiesta l'implementazione*)
+		| Insert (s, toAdd) -> (
                             match eval s r with
                               SetVal(l, t) -> if (typecheck t (eval toAdd r)) then (if not(contains (eval toAdd r) l) then SetVal((eval toAdd r)::l, t)
                                                 else failwith("Already Existing")) else failwith ("Wrong type")
@@ -263,23 +275,71 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 															| _ -> failwith("Not a valid enty")
 															
 															)
-		(*| For_all(f, s) -> (match eval s r with
-																		SetVal([], t) -> Bool(true)
-																	| SetVal(l, t) -> ( let f1 = (eval f r)
-																in let applyfun (f : evT) (v : evT) : (evT) = (match f with
-																												FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v)
-																											| RecFunVal(g, (arg, fBody, fDecEnv)) ->(
-																																					let rEnv = (bind fDecEnv g f)
-																																						in let aEnv = (bind rEnv arg v) 
-																																							in eval fBody aEnv)
-																											|_ -> failwith("Non functional value"))
-																													in let rec apply (l : evT list) (f : evT) : evT = match l with 
-																														[] -> Bool(true)
-																													| hd::tl -> if (applyfun f hd) = Bool(true) then (apply tl f) else Bool(false)
-																												in SetVal(l, t))
-																	| _ -> failwith("Not a valid set")
-		)  *)
+  				(*Operazioni di carattere funzionale di cui è richiesta l'implementazione*)
+		
+		| For_all(f, s) -> ( match f, eval s r with
+														f, SetVal([], t) -> failwith("Set is Empty")
+													| f, SetVal(l, t) ->  let fClosure = (eval f r) 
+																									in let apply (f : evT) (v : evT) : evT = (match f with
+																FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v) 
+															| RecFunVal(g, (arg, fBody, fDecEnv)) -> let rEnv = (bind fDecEnv g f) in
+																																					let aEnv = (bind rEnv arg v) in
+																																											eval fBody aEnv 
+															|	_ -> failwith("non functional value"))
+																								in let rec forall (lista : evT list) (f : evT) : evT = match lista with
+																																[] -> Bool(true)
+																															|	hd::tl -> if ((apply f hd) = Bool(true)) then forall tl f else Bool(false)
+																							in forall l fClosure
+													| f, _ -> failwith("Not a valid set")
+		)
+		| Exists(f, s) -> ( match f, eval s r with
+														f, SetVal([], t) -> failwith("Set is Empty")
+													| f, SetVal(l, t) ->  let fClosure = (eval f r) 
+																							in let apply (f : evT) (v : evT) : evT = (match f with
+																									FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v) 
+																								| RecFunVal(g, (arg, fBody, fDecEnv)) -> let rEnv = (bind fDecEnv g f) in
+																																													let aEnv = (bind rEnv arg v) in
+																																															eval fBody aEnv 
+																								|	_ -> failwith("non functional value"))
+																		in let rec exists (lista : evT list) (f : evT) : evT = match lista with
+																				[] -> Bool(false)
+																			|	hd::tl -> if ((apply f hd) = Bool(true)) then Bool(true) else exists tl f
+											in exists l fClosure
+	| f, _ -> failwith("Not a valid set")
+)
 
+| Filter(f, s) -> ( match f, eval s r with
+														f, SetVal([], t) -> failwith("Set is Empty")
+													| f, SetVal(l, t) ->  let fClosure = (eval f r) 
+																							in let apply (f : evT) (v : evT) : evT = (match f with
+																									FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v) 
+																								| RecFunVal(g, (arg, fBody, fDecEnv)) -> let rEnv = (bind fDecEnv g f) in
+																																													let aEnv = (bind rEnv arg v) in
+																																															eval fBody aEnv 
+																								|	_ -> failwith("non functional value"))
+																		in let rec filter (lista : evT list) (f : evT) : (evT list) = match lista with
+																				[] -> []
+																			|	hd::tl -> if ((apply f hd) = Bool(true)) then hd::(filter tl f) else filter tl f
+											in SetVal(filter l fClosure, t)
+	| f, _ -> failwith("Not a valid set")
+)
+
+| Map(f, s) -> ( match f, eval s r with
+														f, SetVal([], t) -> failwith("Set is Empty")
+													| f, SetVal(l, t) ->  let fClosure = (eval f r) 
+																							in let apply (f : evT) (v : evT) : evT = (match f with
+																									FunVal(arg, fBody, fDecEnv) -> eval fBody (bind fDecEnv arg v) 
+																								| RecFunVal(g, (arg, fBody, fDecEnv)) -> let rEnv = (bind fDecEnv g f) in
+																																													let aEnv = (bind rEnv arg v) in
+																																															eval fBody aEnv 
+																								|	_ -> failwith("non functional value"))
+																		in let rec map (lista : evT list) (f : evT) : (evT list) = match lista with
+																				[] -> []
+																			|	hd::tl -> (apply f hd)::(map tl f)
+											in SetVal(list_as_set(map l fClosure), t)
+	| f, _ -> failwith("Not a valid set")
+)
+		(*Funzioni di appoggio per le operazioni base*)
 
 and findmin (l : evT list) : evT = match l with
 		| [] -> Int(0)
@@ -348,6 +408,27 @@ let s3 = eval max env0;;
 
 let un = Union(set10, set01);;
 let s010 = eval un env0;;
+
+let pred = Fun ("y",  Eq (Den "y", Eint(72)));;
+let predicate = Fun ("y", Or (Eq (Den "y", Eint 43), IsZero (Den "y")));;
+let test = Singleton(Eint(0), "int");;
+
+let testset = Insert(test, Eint(43));;
+let result = For_all(predicate, testset);;
+eval result env0;;
+
+let result = Exists(pred, testset);;
+eval result env0;;
+let testset1 = Insert(testset, Eint(3455));;
+
+let result = Filter(predicate, testset1);;
+eval result env0;;
+
+let maptest = Fun("y", Prod(Den "y", Eint 2));;
+let result = Map(maptest, Union(set10, testset));;
+eval result env0;;
+
+
 (*
 let set3 = Set([]);;
 let s3 = eval set1 env0;;
