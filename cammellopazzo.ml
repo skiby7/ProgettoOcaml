@@ -16,13 +16,14 @@ type exp =
 		| Prod of exp * exp 
 		| Sum of exp * exp 
 		| Diff of exp * exp 
-		|	Eq of exp * exp 
+		| Eq of exp * exp 
 		| Minus of exp 
-		| IsZero of exp 
+		| IsZero of exp
+		| IsPositive of exp
 		| Or of exp * exp 
 		| And of exp * exp 
 		| Not of exp 
-		|	Ifthenelse of exp * exp * exp 
+		| Ifthenelse of exp * exp * exp 
 		| Let of ide * exp * exp 
 		| Fun of ide * exp 
 		| FunCall of exp * exp 
@@ -116,6 +117,10 @@ let non x = if (typecheck "bool" x)
 	then (match x with
 	   	Bool(true) -> Bool(false) 
 		| Bool(false) -> Bool(true))
+  else failwith("Type error");;
+  
+  let ispositive x = if (typecheck "int" x)
+	then (match x with Int(n) -> Bool(n=0 || n > 0))
 	else failwith("Type error");;
 	
 			(*Funzione di supporto per la conversione di tipo*)
@@ -157,7 +162,8 @@ let rec list_as_set (l : 'a list) : 'a list = match l with
 let rec eval (e : exp) (r : evT env) : evT = match e with
 (*Operazioni incluse nell'interprete*)
 		  Eint n -> Int n 
-		| Ebool b -> Bool b 
+    	| Ebool b -> Bool b 
+   		| IsPositive a -> ispositive (eval a r)
 		| Estring a -> String a
 		| IsZero a -> iszero (eval a r) 
 		| Den i -> applyenv r i 
@@ -380,15 +386,12 @@ let print_set_other set env = match eval set env with
 						  SetVal(l, t) -> match t with 
 						| "string" -> let list = convertListString l in List.iter (Printf.printf "%s ") list
 						| "bool" -> let list = convertListBool l in List.iter (Printf.printf "%s ") list
-						| _ -> failwith("Not a valid Set");;
+            | _ -> failwith("Not a valid Set");;
+            
+let printInt x env = match eval x env with Int(a) -> Printf.printf "%d" a;;
+let printBool x env = if eval x env = Bool(true) then Printf.printf "True" else Printf.printf "False";;
+
 let env0 = emptyenv Unbound;;
-
-let set0 = Singleton(Eint(1), "int");;
-let s0 = eval set0 env0;;
-
-
-
-
 Printf.printf "Creazione ambiente env0\n";;
 
 Printf.printf "Creazione set di interi -> intset: ";;
@@ -413,44 +416,133 @@ Printf.printf "Creazione secondo set di interi -> intset1: ";;
 
 print_set_int intset1 env0;;
 
-Printf.printf "\n";;
+Printf.printf "\n\n";;
 
 Printf.printf "Proviamo le operazioni di base:\n";;
 
-Printf.printf " - Unione (intset, intset1) -> ";;
+Printf.printf " - Unione -> {intset ⋃ intset1} = [";;
 let unione = Union(intset, intset1);;
 print_set_int unione env0;;
-Printf.printf "\n";;
+Printf.printf "]\n";;
 
-Printf.printf " - Intersezione (intset, intset1) -> ";;
+Printf.printf " - Intersezione -> {intset ⋂ intset1} = [";;
 let intersezione = Intersection(intset, intset1);;
 print_set_int intersezione env0;;
-Printf.printf "\n";;
+Printf.printf "]\n";;
 
-Printf.printf " - Differenza (intset, intset1) -> {intset \\ intset1} = ";;
+Printf.printf " - Differenza -> {intset \\ intset1} = [ ";;
 let differenza = Difference(intset, intset1);;
 print_set_int differenza env0;;
-Printf.printf "\n";;
-Printf.printf "Proviamo le altre operazioni: ";;
-Printf.printf "Creo un insieme vuoto (Empty(\"string\")) e controllo se è vuoto -> ";;
+Printf.printf "]\n";;
+Printf.printf "\nProviamo le altre operazioni:\n";;
+Printf.printf "Creo un insieme vuoto (Empty(\"string\")) e controllo se è vuoto -> IsEmpty(stringset) = ";;
 let stringset = Empty("string");;
 let isemp = IsEmpty(stringset);;
-let printtest x = if eval x env0 = Bool(true) then Printf.printf "True\n" else Printf.printf "False\n";;
-printtest isemp;;
-Printf.printf "Inserisco \"OCaml\"\nstringset -> ";;
+printBool isemp env0;;
+Printf.printf "\n";;
+
+Printf.printf "Inserisco \"OCaml\"\n\t - stringset -> ";;
 let stringset = Insert(stringset, Estring("OCaml"));;
-Printf.printf "Inserisco \"Interprete\"\nstringset -> ";;
-let stringset = Insert(stringset, Estring("Interprete"));;
 print_set_other stringset env0;;
 Printf.printf "\n";;
-Printf.printf "Controlliamo se \"OCaml\" e \"Delfino\" sono nel Set";;
+Printf.printf "Inserisco \"Interprete\"\n\t - stringset -> ";;
+let stringset = Insert(stringset, Estring("Interprete"));;
+print_set_other stringset env0;;
+Printf.printf "\n\n";;
+Printf.printf "Controlliamo se \"OCaml\" e \"Delfino\" sono nel Set:\n";;
 
-Printf.printf "\n";;
 let istrue = let stringa = Estring("OCaml") in IsIn(stringset, stringa);;
-printtest istrue;;
+Printf.printf " - IsIn(stringset, Estring(\"OCaml\")) -> ";;
+printBool istrue env0;;
+Printf.printf "\n";;
+
 
 let istrue = let stringa = Estring("Delfino") in IsIn(stringset, stringa);;
+Printf.printf " - IsIn(stringset, Estring(\"Delfino\")) -> ";;
+printBool istrue env0;;
+Printf.printf "\n";;
+let stringset1 = Singleton(Estring("OCaml"), "string");;
+Printf.printf "\nAdesso controlliamo se il Set stringset1 = [ ";;
+print_set_other stringset1 env0;;
+Printf.printf "] contenente solo \"OCaml\" è sottoinsieme di stringset [ ";;
+print_set_other stringset env0;;
+Printf.printf "]:\n";;
 
-printtest istrue;;
+
+let isSub = IsSubset(stringset1, stringset);;
+Printf.printf " - stringset1 ⊂ stringset -> ";;
+printBool isSub env0;;
+Printf.printf "\n";;
+Printf.printf " - stringset ⊂ stringset1 -> ";;
+let isSub = IsSubset(stringset, stringset1);;
+printBool isSub env0;;
+Printf.printf "\n";;
+Printf.printf "Per verificare le ultime due operazioni che determinano minimo e massimo di un insieme,\ncreiamo una collezione di interi:\n";;
+let minmax = Singleton(Eint(1), "int");;
+let minmax = Insert(minmax, Eint(10));;
+let minmax = Insert(minmax, Eint(1123));;
+let minmax = Insert(minmax, Eint(25));;
+let minmax = Insert(minmax, Eint(324));;
+Printf.printf " - MinMax: [ ";;
+print_set_int minmax env0;;
+Printf.printf "]\n";;
+Printf.printf "\t - GetMin(MinMax) = ";;
+let min = Getmin(minmax);;
+printInt min env0;;
+Printf.printf "\n";;
+Printf.printf "\t - GetMax(MinMax) = ";;
+let max = Getmax(minmax);;
+printInt max env0;;
+Printf.printf "\n";;
+Printf.printf "Vediamo infine le ultime 4 operazioni di carattere funzionale:\n";;
+Printf.printf " - For_all -> definisco l'insime set0 contenente gli elementi (1,3,5) e applico il predicato \"IsPositive\",\n              che controlla se un numero è maggiore o uguale a 0:\n\n";;
+let set0 = Singleton(Eint(1), "int");;
+let set0 = Insert(set0, Eint(3));;
+let set0 = Insert(set0, Eint(5));;
+let positive = Fun("element", IsPositive(Den "element"));;
+let all = For_all(positive, set0);;
+Printf.printf "\t\tlet positive = Fun(\"element\", IsPositive(Den \"element\"));;\n";;
+Printf.printf "\t\tFor_all(positive, set0) = ";;
+printBool all env0;;
+Printf.printf "\n\n";;
+Printf.printf "              Inserisco un numero negativo in set0\n\n";;
+Printf.printf "\t\tFor_all(positive, set0) = ";;
+let set0 = Insert(set0, Eint(-7));;
+let all = For_all(positive, set0);;
+printBool all env0;;
+Printf.printf "\n\n";;
+Printf.printf " - Exists -> voglio sapere se esiste un elemento in set0 uguale a 3 e uno uguale a 10:\n\n"
+let is3 = Fun("element", Eq(Den ("element"), Eint(3)));;
+let is10 = Fun("element", Eq(Den ("element"), Eint(10)));;
+let exists3 = Exists(is3, set0);;
+let exists10 = Exists(is10, set0);;
+Printf.printf "\t\tlet is3 = Fun(\"element\", Eq(Den \"element\", Eint(3)));;\n";;
+Printf.printf "\t\tlet is10 = Fun(\"element\", Eq(Den \"element\", Eint(10)));;\n";;
+Printf.printf "\t\tExists(is3, set0) = ";;
+printBool exists3 env0;;
+Printf.printf "\n";;
+Printf.printf "\t\tExists(is10, set0) = ";;
+printBool exists10 env0;;
+Printf.printf "\n\n";;
+Printf.printf " - Filter -> adesso voglio sapere qual era il numero negativo inserito precedentemente:\n\n"
+let isnegative = Fun("element",Not(IsPositive(Den "element")));;
+Printf.printf "\t\tlet isnegative = Fun(\"element\", Not(IsPositive(Den \"element\")));;\n";;
+Printf.printf "\t\tFilter(isnegative, set0) = ";;
+let neg = Filter(isnegative, set0);;
+print_set_int neg env0;;
+Printf.printf "\n\n";;
+Printf.printf " - Map -> moltiplico per 2 tutti i numeri dell'insieme:\n\n";;
+Printf.printf "\t\tlet double = Fun(\"element\", Prod(Den \"element\", Eint(2)));;\n";;
+
+let double = Fun("element", Prod(Den "element", Eint(2)));;
+let twice = Map(double, set0);;
+Printf.printf "\t\tset0 -> [ ";;
+print_set_int set0 env0;;
+Printf.printf "]\n";;
+Printf.printf "\t\tMap(double, set0) -> [ ";;
+print_set_int twice env0;;
+Printf.printf "]\n";;
+
+
 
 Printf.printf "\n";;
