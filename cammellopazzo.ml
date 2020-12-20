@@ -163,7 +163,7 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 (*Operazioni incluse nell'interprete*)
 		  Eint n -> Int n 
    		| Ebool b -> Bool b 
-    	| IsPositive a -> ispositive (eval a r)
+		| IsPositive a -> ispositive (eval a r)
 		| Estring a -> String a
 		| IsZero a -> iszero (eval a r) 
 		| Den i -> applyenv r i 
@@ -339,13 +339,13 @@ let rec eval (e : exp) (r : evT env) : evT = match e with
 		(*Funzioni di appoggio per le operazioni base*)
 
 and findmin (l : evT list) : evT = match l with
-		  [] -> Int(0)
-		| [element] -> element
+			[] -> failwith("Error: Set is empty")
+		| element::[] -> element
 		| element::tail -> let smallest = findmin tail in if element < smallest then element else smallest
 
 and findmax (l : evT list) : evT = match l with
-		  [] -> Int(0)
-		| [element] -> element
+			[] -> failwith("Error: Set is empty")
+		| element::[] -> element
 		| element::tail -> let biggest = findmax tail in if element > biggest then element else biggest
 
 and delete (toDelete : exp)(l : evT list) : (evT list) = match l with 
@@ -392,6 +392,7 @@ let print_set_other set env = match eval set env with
             | _ -> failwith("Not a valid Set");;
             
 let printInt x env = match eval x env with Int(a) -> Printf.printf "%d" a | _ -> failwith("Not a valid entry");;
+let printString x env = match eval x env with String(a) -> Printf.printf "%s" a | _ -> failwith("Not a valid entry");;
 let printBool x env = if eval x env = Bool(true) then Printf.printf "True" else Printf.printf "False";;
 
 let stringtop = " ______________________________________";;
@@ -465,6 +466,15 @@ Printf.printf " - Inserisco \"Delfino\" -> stringset = [ ";;
 let stringset = Insert(stringset, Estring("Delfino"));;
 print_set_other stringset env0;;
 Printf.printf "]\n\n";;
+Printf.printf " - Cerco minimo e massimo di stringset:\n";;
+Printf.printf "\t\tGetMin(stringset) = ";;
+let min = Getmin(stringset);;
+printString min env0;;
+Printf.printf "\n";;
+Printf.printf "\t\tGetMax(stringset) = ";;
+let max = Getmax(stringset);;
+printString max env0;;
+Printf.printf "\n\n";;
 Printf.printf " - Rimuovo \"Delfino\" -> stringset = [ ";;
 let stringset = Rm(stringset, Estring("Delfino"));;
 print_set_other stringset env0;;
@@ -497,7 +507,7 @@ Printf.printf "\t\tstringset ⊂ stringset1 -> ";;
 let isSub = IsSubset(stringset, stringset1);;
 printBool isSub env0;;
 Printf.printf "\n\n";;
-Printf.printf " - Per verificare le ultime due operazioni che determinano minimo e massimo di un insieme,\n   creiamo un nuovo set di interi";;
+Printf.printf " - Per verificare le ultime due operazioni che determinano minimo e massimo anche su un insieme di interi,\n   creo un nuovo set di interi";;
 let minmax = Singleton(Eint(1), "int");;
 let minmax = Insert(minmax, Eint(10));;
 let minmax = Insert(minmax, Eint(1123));;
@@ -559,7 +569,7 @@ let twice = Map(double, set0);;
 Printf.printf "\t\tset0 -> [ ";;
 print_set_int set0 env0;;
 Printf.printf "]\n";;
-Printf.printf "\t\tMap(double, set0) -> [ ";;
+Printf.printf "\t\tMap(double, set0) = [ ";;
 print_set_int twice env0;;
 Printf.printf "]\n";;
 
